@@ -255,25 +255,26 @@ namespace app_sys
             return result;
         }
 
-        AutoResetEvent _autoEvent = new AutoResetEvent(false);
+        ////private AutoResetEvent _autoEvent = new AutoResetEvent(false);
         private string getHtml(string url)
         {
             string result = string.Empty;
             try
             {
+                #region
                 //using (WebClient webClient = new WebClient())
                 //{
                 //    webClient.Encoding = System.Text.Encoding.UTF8;
                 //    result = webClient.DownloadString(url);
                 //}
 
-                //HttpWebRequest myRequest = (HttpWebRequest)WebRequest.Create(url);
-                //myRequest.Method = "GET";
-                //WebResponse myResponse = myRequest.GetResponse();
-                //StreamReader sr = new StreamReader(myResponse.GetResponseStream(), System.Text.Encoding.UTF8);
-                //result = sr.ReadToEnd();
-                //sr.Close();
-                //myResponse.Close();
+                HttpWebRequest myRequest = (HttpWebRequest)WebRequest.Create(url);
+                myRequest.Method = "GET";
+                WebResponse myResponse = myRequest.GetResponse();
+                StreamReader sr = new StreamReader(myResponse.GetResponseStream(), System.Text.Encoding.UTF8);
+                result = sr.ReadToEnd();
+                sr.Close();
+                myResponse.Close();
 
                 //                var uri = new Uri(url);
                 //                string req = @"GET " + uri.PathAndQuery + @" HTTP/1.1
@@ -296,25 +297,26 @@ namespace app_sys
                 //                }
                 //result = HttpUtility.HtmlDecode(result);
                 //result = CleanHTMLFromScript(result);
+                #endregion
 
-                HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(new Uri(url));
-                wr.BeginGetResponse(rs =>
-                {
-                    HttpWebResponse myResponse = (HttpWebResponse)wr.EndGetResponse(rs); //add a break point here
+                //////HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(new Uri(url));
+                //////wr.BeginGetResponse(rs =>
+                //////{
+                //////    HttpWebResponse myResponse = (HttpWebResponse)wr.EndGetResponse(rs); //add a break point here
 
-                    StreamReader sr = new StreamReader(myResponse.GetResponseStream(), System.Text.Encoding.UTF8);
-                    result = sr.ReadToEnd();
-                    sr.Close();
-                    result = HttpUtility.HtmlDecode(result);
-                    result = CleanHTMLFromScript(result);
-                    _autoEvent.Set();
-                }, wr);
+                //////    StreamReader sr = new StreamReader(myResponse.GetResponseStream(), System.Text.Encoding.UTF8);
+                //////    result = sr.ReadToEnd();
+                //////    sr.Close();
+                //////    result = HttpUtility.HtmlDecode(result);
+                //////    result = CleanHTMLFromScript(result);
+                //////    _autoEvent.Set();
+                //////}, wr);
             }
             catch (Exception ex)
             {
-                _autoEvent.Set();
+                ////_autoEvent.Set();
             }
-            _autoEvent.WaitOne();
+            //////_autoEvent.WaitOne();
             return result;
         }
 

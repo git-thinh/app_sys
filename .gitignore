@@ -1,0 +1,7 @@
+
+obj/Debug/app_sys.pdb
+*.exe
+*.pdb
+*.cache
+obj/Debug/app_sys.csproj.FileListAbsolute.txt
+bin/Debug/app_sys.vshost.exe.manifest
