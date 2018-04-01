@@ -194,6 +194,7 @@ namespace app_sys
                         {
                             result = JsonConvert.SerializeObject(new
                             {
+                                ok = true,
                                 path = path.Replace('\\', '/'),
                                 dirs = dirs
                             });
@@ -208,12 +209,19 @@ namespace app_sys
 
                             result = JsonConvert.SerializeObject(new
                             {
+                                ok = true,
                                 path = path.Replace('\\', '/'),
                                 dirs = dirs,
                                 files = files
                             });
                         }
                     }
+                    else
+                        result = JsonConvert.SerializeObject(new
+                        {
+                            ok = false,
+                            msg = "Cannot find path: " + path
+                        });
 
                     #endregion
                     break;
