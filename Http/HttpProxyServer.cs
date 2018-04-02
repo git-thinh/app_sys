@@ -45,18 +45,40 @@ namespace app_sys
             return s;
         }
 
+        static readonly byte[] sseBuffer = new byte[] { 100, 97, 116, 97, 58, 32, 10, 10 };
         protected override void ProcessRequest(System.Net.HttpListenerContext Context)
         {
             HttpListenerRequest Request = Context.Request;
             HttpListenerResponse Response = Context.Response;
+            Response.AppendHeader("Access-Control-Allow-Origin", "*");
+            Response.AppendHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            Response.AppendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+
             string result = string.Empty,
                 content_type = "text/html; charset=utf-8",
                 uri = HttpUtility.UrlDecode(Request.RawUrl);
             Stream OutputStream = Response.OutputStream;
+            byte[] bOutput;
 
             switch (uri)
             {
                 case "/favicon.ico":
+                    break;
+                case "/SERVER-SENT-EVENTS":
+                    content_type = "text /event-stream; charset=utf-8";
+                    DateTime startDate = DateTime.Now;
+                    Response.ContentType = "text/event-stream";
+                    while (startDate.AddMinutes(10) > DateTime.Now)
+                    {
+                        try
+                        {
+                            OutputStream.Write(sseBuffer, 0, 8);
+                            OutputStream.Flush();
+                        }
+                        catch (Exception ex) { }
+                        System.Threading.Thread.Sleep(100);
+                    }
+                    OutputStream.Close();
                     break;
                 case "/DIV_CLASS_END":
                     #region
@@ -173,7 +195,8 @@ namespace app_sys
                     #endregion
                     break;
             }
-            byte[] bOutput = Encoding.UTF8.GetBytes(result);
+
+            bOutput = Encoding.UTF8.GetBytes(result);
             Response.ContentType = content_type;
             Response.ContentLength64 = bOutput.Length;
             OutputStream.Write(bOutput, 0, bOutput.Length);
@@ -520,7 +543,7 @@ namespace app_sys
                     break;
             }
         }
-        
+
         private string CleanHTMLFromScript(string str)
         {
             Regex re = new Regex("<script.*?</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
