@@ -66,17 +66,16 @@ namespace app_sys
                     break;
                 case "/SERVER-SENT-EVENTS":
                     content_type = "text /event-stream; charset=utf-8";
-                    DateTime startDate = DateTime.Now;
                     Response.ContentType = "text/event-stream";
-                    while (startDate.AddMinutes(10) > DateTime.Now)
+                    while (true)
                     {
                         try
                         {
                             OutputStream.Write(sseBuffer, 0, 8);
                             OutputStream.Flush();
                         }
-                        catch (Exception ex) { }
-                        System.Threading.Thread.Sleep(100);
+                        catch { }
+                        System.Threading.Thread.Sleep(1000);
                     }
                     OutputStream.Close();
                     break;
@@ -230,7 +229,8 @@ namespace app_sys
                             id = id,
                             ok = true,
                             path = path.Replace('\\', '/'),
-                            dirs = dirs
+                            dirs = dirs,
+                            files = new string[] { }
                         });
                     }
                     else
@@ -238,7 +238,8 @@ namespace app_sys
                         var files = Directory.GetFiles(path, "*.txt").Select(x => new
                         {
                             file = Path.GetFileName(x),
-                            title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
+                            //title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
+                            title = File.ReadAllText(x).Split('\r')[0]
                         }).ToArray();
 
                         result = JsonConvert.SerializeObject(new
