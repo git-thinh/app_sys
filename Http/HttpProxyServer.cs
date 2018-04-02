@@ -86,10 +86,13 @@ namespace app_sys
                     #region
                     HtmlDocument doc = null;
                     string type = Request.QueryString["type"],
+                        id = Request.QueryString["id"],
                         url = getURL(uri),
                         path = string.Empty,
                         folder = string.Empty,
-                        file_name = string.Empty;
+                        folder_new = string.Empty,
+                        file_name = string.Empty, data = string.Empty;
+                    if (id == null) id = string.Empty;
                     if (!string.IsNullOrEmpty(type))
                     {
                         /* dir, file */
@@ -98,8 +101,14 @@ namespace app_sys
                             content_type = "application/json; charset=utf-8";
                             path = Request.QueryString["path"];
                             folder = Request.QueryString["folder"];
+                            folder_new = Request.QueryString["folder_new"];
                             file_name = Request.QueryString["file_name"];
-                            result = processIO(type, path, folder, file_name);
+
+                            StreamReader stream = new StreamReader(Request.InputStream);
+                            data = stream.ReadToEnd();
+                            if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
+
+                            result = processIO(id, type, path, folder, folder_new, file_name, data);
                         }
                         else
                         {
@@ -171,93 +180,177 @@ namespace app_sys
             OutputStream.Close();
         }
 
-        private string processIO(string type, string path, string folder, string file_name)
+        private string processIO(string id, string type, string path, string folder, string folder_new, string file_name, string data)
         {
-            string result = "{}";
+            string result = "{}", path_new, path_file = string.Empty;
+            bool isroot = false;
+            if (string.IsNullOrEmpty(path)) path = PATH_ROOT;
+            //path = path.Replace('/', '\\');
+            path_new = path;
+            if (string.IsNullOrEmpty(folder)) { isroot = true; } else { path = Path.Combine(path, folder); }
+            if (!Directory.Exists(path)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find path: " + path });
+
             switch (type)
             {
-
                 case "dir_get":
                     #region 
-                    bool isroot = false;
-                    if (string.IsNullOrEmpty(path)) path = PATH_ROOT;
-                    path = path.Replace('/', '\\');
-                    if (string.IsNullOrEmpty(folder)) { isroot = true; } else { path = Path.Combine(path, folder); }
-                    if (Directory.Exists(path))
-                    {
-                        var dirs = Directory.GetDirectories(path).Select(x => new
-                        {
-                            dir = Path.GetFileName(x),
-                            sum_file = Directory.GetFiles(x, "*.txt").Length + Directory.GetDirectories(x).Length
-                        }).ToArray();
-                        if (isroot)
-                        {
-                            result = JsonConvert.SerializeObject(new
-                            {
-                                ok = true,
-                                path = path.Replace('\\', '/'),
-                                dirs = dirs
-                            });
-                        }
-                        else
-                        {
-                            var files = Directory.GetFiles(path, "*.txt").Select(x => new
-                            {
-                                file = Path.GetFileName(x),
-                                title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
-                            }).ToArray();
 
-                            result = JsonConvert.SerializeObject(new
-                            {
-                                ok = true,
-                                path = path.Replace('\\', '/'),
-                                dirs = dirs,
-                                files = files
-                            });
-                        }
-                    }
-                    else
+                    var dirs = Directory.GetDirectories(path).Select(x => new
+                    {
+                        dir = Path.GetFileName(x),
+                        sum_file = Directory.GetFiles(x, "*.txt").Length + Directory.GetDirectories(x).Length
+                    }).ToArray();
+                    if (isroot)
+                    {
                         result = JsonConvert.SerializeObject(new
                         {
-                            ok = false,
-                            msg = "Cannot find path: " + path
+                            id = id,
+                            ok = true,
+                            path = path.Replace('\\', '/'),
+                            dirs = dirs
                         });
+                    }
+                    else
+                    {
+                        var files = Directory.GetFiles(path, "*.txt").Select(x => new
+                        {
+                            file = Path.GetFileName(x),
+                            title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
+                        }).ToArray();
 
+                        result = JsonConvert.SerializeObject(new
+                        {
+                            id = id,
+                            ok = true,
+                            path = path.Replace('\\', '/'),
+                            dirs = dirs,
+                            files = files
+                        });
+                    }
                     #endregion
                     break;
                 case "dir_create":
                     #region
-
+                    if (string.IsNullOrEmpty(folder_new)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "the field [folder_new] must be not empty" });
+                    try
+                    {
+                        path = Path.Combine(path, folder_new);
+                        Directory.CreateDirectory(path);
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, msg = "Create folder [" + folder_new + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, msg = "Create folder [" + folder_new + "] fail: " + ex.Message });
+                    }
                     #endregion
                     break;
                 case "dir_edit":
                     #region
+                    if (string.IsNullOrEmpty(folder_new)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "the field [folder_new] must be not empty" });
+                    try
+                    {
+                        path_new = Path.Combine(path_new, folder_new);
+                        Directory.Move(path, path_new);
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, msg = "Rename folder [" + folder_new + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, msg = "Rename folder [" + folder_new + "] fail: " + ex.Message });
+                    }
                     #endregion
                     break;
                 case "dir_remove":
                     #region
-
+                    if (string.IsNullOrEmpty(folder)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "The field [folder] must be not empty" });
+                    try
+                    {
+                        Directory.Delete(path);
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, msg = "Remove folder [" + folder + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, msg = "Remove folder [" + folder + "] fail: " + ex.Message });
+                    }
                     #endregion
                     break;
                 case "file_load":
                     #region
 
+                    if (string.IsNullOrEmpty(file_name)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "the field [file_name] must be not empty" });
+
+                    path_file = Path.Combine(path, file_name);
+
+                    if (!File.Exists(path_file)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find file: " + path_file });
+
+                    result = JsonConvert.SerializeObject(new { id = id, ok = true, text = File.ReadAllText(path_file) });
+
                     #endregion
                     break;
                 case "file_create":
                     #region
+                    if (string.IsNullOrEmpty(file_name)) file_name = DateTime.Now.ToString("yyMMddHHmmssfff") + ".txt";
+                    try
+                    {
+                        path_file = Path.Combine(path, file_name);
+                        if (File.Exists(path_file))
+                        {
+                            string r = "_" + DateTime.Now.ToString("yyMMddHHmmssfff") + ".";
+                            file_name = string.Join(r, file_name.Split('.'));
+                            path_file = Path.Combine(path, file_name);
+                        }
 
+                        if (data == null) data = string.Empty;
+                        File.WriteAllText(path_file, data);
+
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Create file [" + path_file + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Create file [" + path_file + "] fail: " + ex.Message });
+                    }
                     #endregion
                     break;
                 case "file_edit":
                     #region
+                    if (string.IsNullOrEmpty(file_name)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "the field [file_name] must be not empty" });
+                    try
+                    {
+                        path_file = Path.Combine(path, file_name);
+                        if (!File.Exists(path_file))
+                            return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Cannot find file [" + path_file + "]" });
 
+                        if (data == null) data = string.Empty;
+                        File.WriteAllText(path_file, data);
+
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Update file [" + path_file + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Update file [" + path_file + "] fail: " + ex.Message });
+                    }
                     #endregion
                     break;
                 case "file_remove":
                     #region
+                    if (string.IsNullOrEmpty(file_name)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "the field [file_name] must be not empty" });
+                    try
+                    {
+                        path_file = Path.Combine(path, file_name);
+                        if (!File.Exists(path_file))
+                            return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Cannot find file [" + path_file + "]" });
 
+                        File.Delete(path_file);
+
+                        result = JsonConvert.SerializeObject(new { id = id, ok = true, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Remove file [" + path_file + "] successfully." });
+                    }
+                    catch (Exception ex)
+                    {
+                        return JsonConvert.SerializeObject(new { id = id, ok = false, path = path/*.Replace("\\", "/")*/, file_name = file_name, msg = "Remove file [" + path_file + "] fail: " + ex.Message });
+                    }
                     #endregion
+                    break;
+                default:
+                    result = JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find action type is " + type });
                     break;
             }
             return result;
@@ -427,8 +520,7 @@ namespace app_sys
                     break;
             }
         }
-
-
+        
         private string CleanHTMLFromScript(string str)
         {
             Regex re = new Regex("<script.*?</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
