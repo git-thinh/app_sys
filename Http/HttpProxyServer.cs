@@ -75,7 +75,7 @@ namespace app_sys
                             OutputStream.Flush();
                         }
                         catch { }
-                        System.Threading.Thread.Sleep(1000);
+                        System.Threading.Thread.Sleep(300);
                     }
                     OutputStream.Close();
                     break;
@@ -120,10 +120,19 @@ namespace app_sys
                         if (string.IsNullOrEmpty(url))
                         {
                             content_type = "application/json; charset=utf-8";
-                            path = Request.QueryString["path"];
-                            folder = Request.QueryString["folder"];
-                            folder_new = Request.QueryString["folder_new"];
-                            file_name = Request.QueryString["file_name"];
+                            //path = Request.QueryString["path"];
+                            //folder = Request.QueryString["folder"];
+                            //folder_new = Request.QueryString["folder_new"];
+                            //file_name = Request.QueryString["file_name"];
+
+                            var dic = new Dictionary<string, string>() { };
+                            if (uri.IndexOf('?') != -1)
+                                dic = uri.Split('?')[1].Split('&').Select(x => x.Split('=')).ToDictionary(x => x[0].Trim().ToLower(), x => x[1].Trim());
+
+                            if (dic.ContainsKey("path")) path = dic["path"];
+                            if (dic.ContainsKey("folder")) folder = dic["folder"];
+                            if (dic.ContainsKey("folder_new")) folder_new = dic["folder_new"];
+                            if (dic.ContainsKey("file_name")) file_name = dic["file_name"];
 
                             StreamReader stream = new StreamReader(Request.InputStream);
                             data = stream.ReadToEnd();
@@ -239,7 +248,7 @@ namespace app_sys
                         {
                             file = Path.GetFileName(x),
                             //title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
-                            title = File.ReadAllText(x).Split('\r')[0]
+                            title = File.ReadAllText(x).Split(new char[] { '\r', '\n' })[0]
                         }).ToArray();
 
                         result = JsonConvert.SerializeObject(new
