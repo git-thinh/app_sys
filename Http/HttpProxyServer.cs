@@ -53,6 +53,16 @@ namespace app_sys
             Response.AppendHeader("Access-Control-Allow-Origin", "*");
             Response.AppendHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             Response.AppendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            
+
+            // Do any of these result in META tags e.g. <META HTTP-EQUIV="Expire" CONTENT="-1">
+            // HTTP Headers or both?            
+            // Is this required for FireFox? Would be good to do this without magic strings.
+            // Won't it overwrite the previous setting
+            //Response.Headers.Add("Cache-Control", "no-cache, no-store");
+            Response.AddHeader("Pragma", "no-cache");
+            Response.AddHeader("Pragma", "no-store");
+            Response.AddHeader("cache-control", "no-cache");
 
             string result = string.Empty,
                 content_type = "text/html; charset=utf-8",
