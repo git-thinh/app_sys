@@ -226,9 +226,15 @@ namespace app_sys
             string result = "{}", path_new, path_file = string.Empty;
             bool isroot = false;
             if (string.IsNullOrEmpty(path)) path = PATH_ROOT;
-            //path = path.Replace('/', '\\');
+            path = path.Replace('/', '\\');
             path_new = path;
-            if (string.IsNullOrEmpty(folder)) { isroot = true; } else { path = Path.Combine(path, folder); }
+            if (string.IsNullOrEmpty(folder)) {
+                isroot = true;
+            } else {
+                if (!type.Contains("_create"))
+                    path = Path.Combine(path, folder);
+            }
+
             if (!Directory.Exists(path)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find path: " + path });
 
             switch (type)
