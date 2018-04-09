@@ -19,6 +19,7 @@ namespace app_sys
         static string PATH_ROOT = AppDomain.CurrentDomain.BaseDirectory;
         static string[] DIV_CLASS_END = new string[] { };
         static string[] TEXT_END = new string[] { };
+        static Dictionary<string, string> dicBookmark = new Dictionary<string, string>() { };
 
         public HttpProxyServer()
         {
@@ -26,6 +27,14 @@ namespace app_sys
                 DIV_CLASS_END = File.ReadAllLines("DIV_CLASS_END.txt");
             if (File.Exists("TEXT_END.txt"))
                 TEXT_END = File.ReadAllLines("TEXT_END.txt");
+            if (File.Exists("BOOKMARK.txt"))
+            {
+                dicBookmark = File.ReadAllLines("BOOKMARK.txt")
+                    .Select(x => x.Trim())
+                    .Where(x => x.Trim() != string.Empty)
+                    .Select(x => x.Split('=')).Where(x => x.Length > 1)
+                    .ToDictionary(x => x[0].Trim().ToLower(), x => x[1]);
+            }
         }
 
         private bool hasH1 = false, hasContentEnd = false;
@@ -53,7 +62,7 @@ namespace app_sys
             Response.AppendHeader("Access-Control-Allow-Origin", "*");
             Response.AppendHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             Response.AppendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-            
+
 
             // Do any of these result in META tags e.g. <META HTTP-EQUIV="Expire" CONTENT="-1">
             // HTTP Headers or both?            
@@ -64,13 +73,13 @@ namespace app_sys
             Response.AddHeader("Pragma", "no-store");
             Response.AddHeader("cache-control", "no-cache");
 
-            string result = string.Empty,
+            string result = string.Empty, data = string.Empty,
                 content_type = "text/html; charset=utf-8",
                 uri = HttpUtility.UrlDecode(Request.RawUrl);
             Stream OutputStream = Response.OutputStream;
             byte[] bOutput;
 
-            switch (uri)
+            switch (Request.Url.LocalPath)
             {
                 case "/favicon.ico":
                     break;
@@ -88,6 +97,82 @@ namespace app_sys
                         System.Threading.Thread.Sleep(300);
                     }
                     OutputStream.Close();
+                    break;
+                case "/BOOKMARK.txt":
+                case "/bookmark.txt":
+                    #region
+                    content_type = "application/json; charset=utf-8";
+                    if (File.Exists("BOOKMARK.txt"))
+                    {
+                        dicBookmark = File.ReadAllLines("BOOKMARK.txt")
+                        .Select(x => x.Trim())
+                        .Where(x => x.Trim() != string.Empty)
+                        .Select(x => x.Split('=')).Where(x => x.Length > 1)
+                        .ToDictionary(x => x[0].Trim().ToLower(), x => x[1]);
+                    }
+                    result = JsonConvert.SerializeObject(dicBookmark);
+                    #endregion
+                    break;
+                case "/SELECTOR":
+                    #region
+                    content_type = "text/plain; charset=utf-8";
+
+                    using (StreamReader stream = new StreamReader(Request.InputStream))
+                    {
+                        data = stream.ReadToEnd();
+                        if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
+                        data = data.Trim().ToLower();
+
+                        if (data.Contains("github.com"))
+                        {
+                            var ui = new Uri(data);
+                            if (data.EndsWith(".md") || data.EndsWith(".txt"))
+                            {
+                                string ur = "https://raw.githubusercontent.com" + ui.LocalPath;
+                            }
+                            else
+                            {
+                                string ur = "https://raw.githubusercontent.com" + ui.LocalPath + "/master/README.md";
+
+                            }
+                        }
+                        else
+                        {
+                            if (dicBookmark.ContainsKey(data))
+                            {
+                                result = dicBookmark[data];
+                            }
+                        }
+
+
+                    }
+
+
+                    #endregion
+                    break;
+                case "/BOOKMARK":
+                    #region
+
+                    string url3 = Request.QueryString["url"];
+                    string title3 = Request.QueryString["title"];
+                    if (!string.IsNullOrEmpty(url3))
+                    {
+                        url3 = url3.Replace('|', '/').Replace('~', ':');
+                    }
+
+                    using (StreamReader stream = new StreamReader(Request.InputStream))
+                    {
+                        data = stream.ReadToEnd();
+                        if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
+                    }
+
+
+                    #endregion
+                    break;
+                case "/msg.html":
+                    #region
+                    result = File.ReadAllText("msg.html");
+                    #endregion
                     break;
                 case "/DIV_CLASS_END":
                     #region
@@ -122,7 +207,7 @@ namespace app_sys
                         path = string.Empty,
                         folder = string.Empty,
                         folder_new = string.Empty,
-                        file_name = string.Empty, data = string.Empty;
+                        file_name = string.Empty;
                     if (id == null) id = string.Empty;
                     if (!string.IsNullOrEmpty(type))
                     {
@@ -144,9 +229,11 @@ namespace app_sys
                             if (dic.ContainsKey("folder_new")) folder_new = dic["folder_new"];
                             if (dic.ContainsKey("file_name")) file_name = dic["file_name"];
 
-                            StreamReader stream = new StreamReader(Request.InputStream);
-                            data = stream.ReadToEnd();
-                            if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
+                            using (StreamReader stream = new StreamReader(Request.InputStream))
+                            {
+                                data = stream.ReadToEnd();
+                                if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
+                            }
 
                             result = processIO(id, type, path, folder, folder_new, file_name, data);
                         }
@@ -228,9 +315,12 @@ namespace app_sys
             if (string.IsNullOrEmpty(path)) path = PATH_ROOT;
             path = path.Replace('/', '\\');
             path_new = path;
-            if (string.IsNullOrEmpty(folder)) {
+            if (string.IsNullOrEmpty(folder))
+            {
                 isroot = true;
-            } else {
+            }
+            else
+            {
                 if (!type.Contains("_create"))
                     path = Path.Combine(path, folder);
             }
