@@ -84,6 +84,7 @@ namespace app_sys
                 case "/favicon.ico":
                     break;
                 case "/SERVER-SENT-EVENTS":
+                    #region
                     content_type = "text /event-stream; charset=utf-8";
                     Response.ContentType = "text/event-stream";
                     while (true)
@@ -97,6 +98,7 @@ namespace app_sys
                         System.Threading.Thread.Sleep(300);
                     }
                     OutputStream.Close();
+                    #endregion
                     break;
                 case "/BOOKMARK.txt":
                 case "/bookmark.txt":
@@ -335,7 +337,10 @@ namespace app_sys
                     var dirs = Directory.GetDirectories(path).Select(x => new
                     {
                         dir = Path.GetFileName(x),
-                        sum_file = Directory.GetFiles(x, "*.txt").Length + Directory.GetDirectories(x).Length
+                        sum_file =
+                        Directory.GetDirectories(x).Length +
+                        "*.txt|*.html".Split('|').SelectMany(filter => System.IO.Directory.GetFiles(x, filter)).Count()
+                        //Directory.GetFiles(x, "*.txt,*.html").Length + Directory.GetDirectories(x).Length
                     }).ToArray();
                     if (isroot)
                     {
@@ -350,12 +355,15 @@ namespace app_sys
                     }
                     else
                     {
-                        var files = Directory.GetFiles(path, "*.txt").Select(x => new
-                        {
-                            file = Path.GetFileName(x),
-                            //title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
-                            title = File.ReadAllText(x).Split(new char[] { '\r', '\n' })[0]
-                        }).ToArray();
+                        var files =
+                            //Directory.GetFiles(path, "*.txt, *.html")
+                            "*.txt|*.html".Split('|').SelectMany(filter => System.IO.Directory.GetFiles(path, filter))
+                            .Select(x => new
+                            {
+                                file = Path.GetFileName(x),
+                                //title = Regex.Replace(Regex.Replace(File.ReadAllLines(x)[0], "<.*?>", " "), "[ ]{2,}", " ").Trim()
+                                title = File.ReadAllText(x).Split(new char[] { '\r', '\n' })[0]
+                            }).ToArray();
 
                         result = JsonConvert.SerializeObject(new
                         {
@@ -420,8 +428,12 @@ namespace app_sys
                     path_file = Path.Combine(path, file_name);
 
                     if (!File.Exists(path_file)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find file: " + path_file });
+                    string s = File.ReadAllText(path_file), ext = Path.GetExtension(path_file);
+                    if (ext == ".html") {
+                        //s = Regex.Replace(s, @"<[^>]*>", String.Empty);
+                    }
 
-                    result = JsonConvert.SerializeObject(new { id = id, ok = true, text = File.ReadAllText(path_file) });
+                    result = JsonConvert.SerializeObject(new { id = id, ok = true, extension = ext, text = s });
 
                     #endregion
                     break;
