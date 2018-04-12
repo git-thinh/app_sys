@@ -428,12 +428,38 @@ namespace app_sys
                     path_file = Path.Combine(path, file_name);
 
                     if (!File.Exists(path_file)) return JsonConvert.SerializeObject(new { id = id, ok = false, msg = "Cannot find file: " + path_file });
-                    string s = File.ReadAllText(path_file), ext = Path.GetExtension(path_file);
-                    if (ext == ".html") {
-                        //s = Regex.Replace(s, @"<[^>]*>", String.Empty);
-                    }
+                    string s = File.ReadAllText(path_file), ext = Path.GetExtension(path_file),
+                                htm = string.Empty, text = string.Empty, word = string.Empty;
+                    string[] line = new string[] { };
+                    word[] aword = new word[] { };
+                    switch (ext)
+                    {
+                        case ".html":
+                            text = Regex.Replace(s, @"<[^>]*>", " ");
+                            text = Regex.Replace(s, "[^0-9a-zA-Z]+", " ").ToLower();
+                            text = Regex.Replace(text, "[ ]{2,}", " ").ToLower();
+                            aword = text.Split(' ').Where(x => x.Length > 3)
+                                .GroupBy(x => x)
+                                .OrderByDescending(x => x.Count())
+                                .Select(x => new word (){ w = x.Key, k = x.Count() })
+                                .ToArray();
+                            htm = string.Format("<{0} class=ext_html>{1}</{0}>", EL.TAG_ARTICLE, s);
+                            result = JsonConvert.SerializeObject(new { id = id, ok = true, extension = ext, text = text, html = htm, word = aword });
+                            break;
+                        case ".txt":
+                            line = s.Split(new char[] { '\n', '\r' }).Where(x => x != string.Empty).ToArray();
+                            text = Regex.Replace(s, "[^0-9a-zA-Z]+", " ").ToLower();
+                            text = Regex.Replace(text, "[ ]{2,}", " ").ToLower();
+                            aword = text.Split(' ').Where(x => x.Length > 3)
+                                .GroupBy(x => x)
+                                .OrderByDescending(x => x.Count())
+                                .Select(x => new word() { w = x.Key, k = x.Count() })
+                                .ToArray();
+                            htm = HtmlBuilder.renderFile(line);
 
-                    result = JsonConvert.SerializeObject(new { id = id, ok = true, extension = ext, text = s });
+                            result = JsonConvert.SerializeObject(new { id = id, ok = true, extension = ext, text = s, html = htm, word = aword });
+                            break;
+                    }
 
                     #endregion
                     break;

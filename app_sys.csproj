@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0EA84563-D652-46CD-B126-DF3D51916A93}</ProjectGuid>
+    <ProjectGuid>{7E494A78-AC7C-4412-A4A3-535C30F0EFAC}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>app_sys</RootNamespace>
@@ -47,6 +47,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="app.cs" />
+    <Compile Include="English\el.cs" />
+    <Compile Include="English\EL_SPEAK_MSG.cs" />
+    <Compile Include="English\HtmlBuilder.cs" />
+    <Compile Include="English\MSG.cs" />
+    <Compile Include="English\Paragraph.cs" />
     <Compile Include="English\TiengViet.cs" />
     <Compile Include="English\Translator.cs" />
     <Compile Include="Html\HtmlAgilityPack\crc32.cs" />
