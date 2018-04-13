@@ -39,7 +39,8 @@ namespace app_sys
                     if (i == a.Length - 1 || si == EL._TAG_CODE_CHAR_END)
                     {
                         _isCode = false;
-                        p = new Paragraph() { id = _id, text = _code, type = SENTENCE.CODE, html = string.Format("<{0}>{1}</{0}>", EL.TAG_CODE, _code) };
+                        string sc = _code.Replace("<", "&#x3C;").Replace(">", "&#x3E;");
+                        p = new Paragraph() { id = _id, text = _code, type = SENTENCE.CODE, html = string.Format(@"<{0}>{1}</{0}>", EL.TAG_CODE, sc) };
                         ls.Add(p);
                     }
                     #endregion

@@ -97,6 +97,7 @@ namespace app_sys
         public const string DO_SPEECH_SENTENCE_KEY_WORD              = "__s_4";
 
         public const string TAG_CODE                                 = "pre";
+        //public const string TAG_CODE                                 = "textarea";
         public const string TAG_ARTICLE                              = "article";
         public const string TAG_TITLE                                = "h2";
         public const string TAG_HEADING                              = "h3";
