@@ -13,7 +13,7 @@ namespace app_sys
 {
     public class Chrome
     {
-        public string getDataTabOpening()
+        public static string getDataTabOpening(string url)
         {
             string result = string.Empty;
 
@@ -21,30 +21,31 @@ namespace app_sys
 
             var sessions = chrome.GetAvailableSessions();
             if (sessions.Count == 0) return result;
-            int index = -1;
-            for (int i = 0; i < sessions.Count; i++)
-            {
-                if (sessions[i].url.StartsWith("http"))
-                {
-                    index = i;
-                    break;
-                }
-            }
-            if (index == -1) return result;
+            //////int index = -1;
+            //////for (int i = 0; i < sessions.Count; i++)
+            //////{
+            //////    if (sessions[i].url.StartsWith("http"))
+            //////    {
+            //////        index = i;
+            //////        break;
+            //////    }
+            //////}
+            //////if (index == -1) return result;
 
-            var uri = new Uri(sessions[index].url);
+            var ses = sessions.Where(x => x.url == url).Take(1).SingleOrDefault();
+            if (ses == null) return result;
 
-            // Will drive first tab session
-            var sessionWSEndpoint = sessions[index].webSocketDebuggerUrl;
-            chrome.SetActiveSession(sessionWSEndpoint);
+            var uri = new Uri(ses.url);
+
+            // Will drive first tab session 
+            chrome.SetActiveSession(ses.webSocketDebuggerUrl);
 
             //string result = chrome.Eval("var s = ''; Array.from(document.querySelectorAll('" + selector + "')).forEach(function (it) { s += it.innerHTML; s += '<hr>' }); s;");
             string js = string.Empty;
-            js = File.ReadAllText("-/" + uri.Host + ".js");
+            js = File.ReadAllText("bookmark/-/" + uri.Host + ".js");
             string s = chrome.Eval(js);
             chrome_data dt = JsonConvert.DeserializeObject<chrome_data>(s);
             result = dt.result.result.value;
-            
 
             //Console.WriteLine("Available debugging sessions");
             //foreach (var s in sessions)
@@ -60,6 +61,7 @@ namespace app_sys
             //////result = chrome.Eval("document.forms[0].submit()");
             //Console.ReadLine();
 
+            if (result == null) result = string.Empty;
             return result;
         }
     }
@@ -122,7 +124,8 @@ namespace app_sys
 
         public string Eval(string cmd)
         {
-            var json = @"{""method"":""Runtime.evaluate"",""params"":{""expression"":""" + cmd + @""",""objectGroup"":""console"",""includeCommandLineAPI"":true,""doNotPauseOnExceptions"":false,""returnByValue"":false},""id"":1}";
+            //var json = @"{""method"":""Runtime.evaluate"",""params"":{""expression"":""" + cmd + @""",""objectGroup"":""console"",""includeCommandLineAPI"":true,""doNotPauseOnExceptions"":false,""returnByValue"":false},""id"":1}";
+            string json = JsonConvert.SerializeObject(new chrome_cmd() { _params = new chrome_params() { expression = cmd } });
             return this.SendCommand(json);
         }
 
@@ -204,5 +207,23 @@ namespace app_sys
             this.sessionWSEndpoint = sessionWSEndpoint.Replace("ws://localhost", "ws://127.0.0.1");
 
         }
+    }
+
+    //{""method"":""Runtime.evaluate"",""params"":{""expression"":""" + cmd + @""",""objectGroup"":""console"",""includeCommandLineAPI"":true,""doNotPauseOnExceptions"":false,""returnByValue"":false},""id"":1}
+    public class chrome_cmd
+    {
+        public string method = "Runtime.evaluate";
+        [JsonProperty(PropertyName = "params")]
+        public chrome_params _params { set; get; }
+        public int id = 1;
+    }
+
+    public class chrome_params
+    {
+        public string expression { set; get; }
+        public string objectGroup = "console";
+        public bool includeCommandLineAPI = true;
+        public bool doNotPauseOnExceptions = false;
+        public bool returnByValue = false;
     }
 }

@@ -19,22 +19,14 @@ namespace app_sys
         static string PATH_ROOT = AppDomain.CurrentDomain.BaseDirectory;
         static string[] DIV_CLASS_END = new string[] { };
         static string[] TEXT_END = new string[] { };
-        static Dictionary<string, string> dicBookmark = new Dictionary<string, string>() { };
+        static Dictionary<string, string> dicCacheCrawler = new Dictionary<string, string>() { };
 
         public HttpProxyServer()
         {
             if (File.Exists("DIV_CLASS_END.txt"))
                 DIV_CLASS_END = File.ReadAllLines("DIV_CLASS_END.txt");
             if (File.Exists("TEXT_END.txt"))
-                TEXT_END = File.ReadAllLines("TEXT_END.txt");
-            if (File.Exists("BOOKMARK.txt"))
-            {
-                dicBookmark = File.ReadAllLines("BOOKMARK.txt")
-                    .Select(x => x.Trim())
-                    .Where(x => x.Trim() != string.Empty)
-                    .Select(x => x.Split('=')).Where(x => x.Length > 1)
-                    .ToDictionary(x => x[0].Trim().ToLower(), x => x[1]);
-            }
+                TEXT_END = File.ReadAllLines("TEXT_END.txt"); 
         }
 
         private bool hasH1 = false, hasContentEnd = false;
@@ -99,81 +91,85 @@ namespace app_sys
                     }
                     OutputStream.Close();
                     #endregion
-                    break;
-                case "/BOOKMARK.txt":
-                case "/bookmark.txt":
-                    #region
-                    content_type = "application/json; charset=utf-8";
-                    if (File.Exists("BOOKMARK.txt"))
-                    {
-                        dicBookmark = File.ReadAllLines("BOOKMARK.txt")
-                        .Select(x => x.Trim())
-                        .Where(x => x.Trim() != string.Empty)
-                        .Select(x => x.Split('=')).Where(x => x.Length > 1)
-                        .ToDictionary(x => x[0].Trim().ToLower(), x => x[1]);
-                    }
-                    result = JsonConvert.SerializeObject(dicBookmark);
-                    #endregion
-                    break;
-                case "/SELECTOR":
-                    #region
-                    content_type = "text/plain; charset=utf-8";
-
-                    using (StreamReader stream = new StreamReader(Request.InputStream))
-                    {
-                        data = stream.ReadToEnd();
-                        if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
-                        data = data.Trim().ToLower();
-
-                        if (data.Contains("github.com"))
-                        {
-                            var ui = new Uri(data);
-                            if (data.EndsWith(".md") || data.EndsWith(".txt"))
-                            {
-                                string ur = "https://raw.githubusercontent.com" + ui.LocalPath;
-                            }
-                            else
-                            {
-                                string ur = "https://raw.githubusercontent.com" + ui.LocalPath + "/master/README.md";
-
-                            }
-                        }
-                        else
-                        {
-                            if (dicBookmark.ContainsKey(data))
-                            {
-                                result = dicBookmark[data];
-                            }
-                        }
-
-
-                    }
-
-
-                    #endregion
-                    break;
-                case "/BOOKMARK":
-                    #region
-
-                    string url3 = Request.QueryString["url"];
-                    string title3 = Request.QueryString["title"];
-                    if (!string.IsNullOrEmpty(url3))
-                    {
-                        url3 = url3.Replace('|', '/').Replace('~', ':');
-                    }
-
-                    using (StreamReader stream = new StreamReader(Request.InputStream))
-                    {
-                        data = stream.ReadToEnd();
-                        if (!string.IsNullOrEmpty(data)) data = HttpUtility.UrlDecode(data);
-                    }
-
-
-                    #endregion
-                    break;
+                    break;   
                 case "/msg.html":
                     #region
                     result = File.ReadAllText("msg.html");
+                    #endregion
+                    break;
+                case "/fetch":
+                    #region
+                    string url_fetch = Request.QueryString["url"];
+                    try
+                    { 
+                        url_fetch = Encoding.UTF8.GetString(Convert.FromBase64String(url_fetch));
+
+                        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url_fetch);
+                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+                            Stream receiveStream = response.GetResponseStream();
+                            StreamReader readStream = null;
+
+                            if (response.CharacterSet == null)
+                            {
+                                readStream = new StreamReader(receiveStream);
+                            }
+                            else
+                            {
+                                readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
+                            }
+
+                            result = readStream.ReadToEnd();
+
+                            response.Close();
+                            readStream.Close();
+                        }
+
+                    }
+                    catch (Exception exception)
+                    {
+                        //throw new Exception("Error in base64Encode" + exception.Message);
+                    }
+
+                    #endregion
+                    break;
+                case "/crawler":
+                    #region
+
+                    content_type = "application/json; charset=utf-8";
+                    string url_crawler = Request.QueryString["url"];
+                    try
+                    {
+                        string s = "";
+                        if (dicCacheCrawler.ContainsKey(url_crawler)) {
+                            s = dicCacheCrawler[url_crawler];
+                        }
+                        else
+                        {
+                            url_crawler = Encoding.UTF8.GetString(Convert.FromBase64String(url_crawler));
+                            s = Chrome.getDataTabOpening(url_crawler);
+                            dicCacheCrawler[url_crawler] = s;
+                        }
+
+                        string[] line = s.Split(new char[] { '\n', '\r' }).Where(x => x != string.Empty).ToArray();
+                        string text = Regex.Replace(s, "[^0-9a-zA-Z]+", " ").ToLower();
+                        text = Regex.Replace(text, "[ ]{2,}", " ").ToLower();
+                        var aword = text.Split(' ').Where(x => x.Length > 3)
+                            .GroupBy(x => x)
+                            .OrderByDescending(x => x.Count())
+                            .Select(x => new word() { w = x.Key, k = x.Count() })
+                            .ToArray();
+                        string htm = HtmlBuilder.renderFile(line);
+
+                        result = JsonConvert.SerializeObject(new { id = 0, ok = true, extension = "", text = s, html = htm, word = aword });
+                    }
+                    catch (Exception exception)
+                    {
+                        //throw new Exception("Error in base64Encode" + exception.Message);
+                    }
+
                     #endregion
                     break;
                 case "/DIV_CLASS_END":
