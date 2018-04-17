@@ -70,9 +70,16 @@ namespace app_sys
                             break;
                         case '•': // LI
                             si = si.Substring(1).Trim();
-                            //_ul += "<li>" + si.generalHtmlWords() + "</li>";
-                            if(_ul != "<ul>") _ul += "</li>";
+                            if (_ul != "<ul>") _ul += "</li>";
                             _ul += "<li><p class=li>" + si.generalHtmlWords() + "</p>";
+                            break;
+                        case '□': // LI LI
+                            si = si.Substring(1).Trim();
+                            _ul += "<div class=li2>" + si.generalHtmlWords() + "</div>";
+                            break;
+                        case '▫': // LI LI LI
+                            si = si.Substring(1).Trim();
+                            _ul += "<div class=li3>" + si.generalHtmlWords() + "</div>";
                             break;
                         case '┘': // end UL_OL
                             _ul += "</ul>";
