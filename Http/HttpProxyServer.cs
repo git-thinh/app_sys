@@ -20,6 +20,7 @@ namespace app_sys
         static string[] DIV_CLASS_END = new string[] { };
         static string[] TEXT_END = new string[] { };
         static Dictionary<string, string> dicCacheCrawler = new Dictionary<string, string>() { };
+        static Dictionary<string, string> dicCacheWord = new Dictionary<string, string>() { };
 
         public HttpProxyServer()
         {
@@ -164,6 +165,31 @@ namespace app_sys
                         string htm = HtmlBuilder.renderFile(line);
 
                         result = JsonConvert.SerializeObject(new { id = 0, ok = true, extension = "", text = s, html = htm, word = aword });
+                    }
+                    catch (Exception exception)
+                    {
+                        //throw new Exception("Error in base64Encode" + exception.Message);
+                    }
+
+                    #endregion
+                    break;
+                case "/cambridge":
+                    #region
+
+                    content_type = "application/json; charset=utf-8";
+                    string w_cambridge = Request.QueryString["w"];
+                    try
+                    {
+                        string s = "";
+                        if (dicCacheWord.ContainsKey(uri))
+                        {
+                            s = dicCacheWord[uri];
+                        }
+                        else
+                        { 
+                        }
+
+                        result = JsonConvert.SerializeObject(new { id = 0, ok = true, extension = "", html = s });
                     }
                     catch (Exception exception)
                     {
